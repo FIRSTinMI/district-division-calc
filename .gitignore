@@ -2,6 +2,8 @@
 test_data/out.txt
 
 # venv
+.vscode
+__pycache__
 .Python
 [Bb]in
 [Ii]nclude

@@ -8,10 +8,16 @@ This tool has been created to validate division assignments or generate possible
 
 If you see any problems with the algorithm in this tool, this repo welcomes outside contributions or creation of issues.
 
-## Run It
+## Generate Divisions
 
 ```bash
 python generate_divisions.py --divisions-file test_data/divisions.txt --out-file test_data/out.txt --district FIM --api-key "username:guid" --num-teams 160 --accommodations-file test_data/accommodations.txt --season 2024
+```
+
+## Validate Generated Divisions
+
+```bash
+python validate_divisions.py --out-file test_data/out.txt --season 2024 --district FIM --api-key "username:guid"
 ```
 
 ## File Formats
@@ -30,4 +36,13 @@ Sponsor D
 ```plaintext
 1,Sponsor A,Sponsor D
 2,Sponsor C
+```
+
+### out.txt
+```plaintext
+Sponsor A
+1
+
+Sponsor C
+2
 ```

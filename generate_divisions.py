@@ -1,12 +1,12 @@
 import typer
 import sys
-import requests
 import random
 from base64 import b64encode
 from pathlib import Path
 
 import models
 import validate_divisions
+import util
 
 def main(
         api_key: str = typer.Option(..., help="Formatted as 'username:token'"),
@@ -35,10 +35,17 @@ def main(
             dir_okay=False,
             resolve_path=True
         ),
-        force: bool = typer.Option(False)
+        force: bool = typer.Option(False),
+        verbose: bool = typer.Option(False, "-v", help="Show extra debug messages")
 ):
+    def print_debug(message: str):
+        if verbose:
+            typer.echo(typer.style(message, fg="cyan"))
+
     if not force and out_file.exists():
         raise typer.BadParameter("--out-file exists. Use --force to overwrite.")
+    
+    typer.echo("Generating divisions...")
     
     with open(divisions_file) as file:
         divisions = [line.rstrip() for line in file if line.rstrip()]
@@ -63,7 +70,7 @@ def main(
     quartile_size = num_teams // 4
     division_quartile_size = quartile_size // len(divisions)
 
-    rankings = get_rankings(season, district, num_teams, api_key)
+    rankings = util.get_rankings(season, district, num_teams, api_key)
 
     # Divide into quartiles and shuffle them
     quartiles = [rankings[i * quartile_size:(i + 1) * quartile_size] for i in range(4)]
@@ -82,13 +89,17 @@ def main(
             for team in division.teams:
                 if team.team_number in accommodations:
                     if division.name not in accommodations[team.team_number]:
-                        typer.echo(f"Fails: accommodation for {team.team_number} not met (got {division.name}, need {accommodations[team.team_number]})")
+                        print_debug(f"Fails: accommodation for {team.team_number} not met (got {division.name}, need {accommodations[team.team_number]})")
                         breaks_rule = True
         
         if not validate_divisions.validate_divisions(potential_divisions):
-            typer.echo(f"Fails: Not within tolerances")
+            print_debug("Fails: Not within tolerances")
             breaks_rule = True
         if not breaks_rule:
+            success_msg = " Successfully generated divisions! "
+            typer.echo(typer.style("-"*len(success_msg), fg="green"))
+            typer.echo(typer.style(success_msg, fg="green"))
+            typer.echo(typer.style("-"*len(success_msg), fg="green"))
             break
 
     with open(out_file, "w") as file:
@@ -97,29 +108,6 @@ def main(
             for team in sorted([t.team_number for t in division.teams]):
                 file.write(f"{team}\n")
             file.write(f"\n")
-
-
-def get_rankings(season: int, district: str, num_teams: int, api_key: str) -> list[models.DivisionTeam]:
-    rankings = []
-    current_page = 1
-    total_pages = 99
-
-    api_headers = {
-        "Authorization": f"Basic {b64encode(api_key.encode()).decode()}",
-        "Accept": "application/json"
-    }
-
-    while len(rankings) < 160 and current_page < total_pages:
-        resp = requests.get(f"https://frc-api.firstinspires.org/v3.0/{season}/rankings/district?districtCode={district}&page={current_page}", headers=api_headers)
-        if not resp.ok:
-            raise Exception("Got a bad response from the FRC API: " + str(resp.status_code) + " - " + resp.text)
-        resp = resp.json()
-        if current_page == 1:
-            total_pages =  resp["pageTotal"]
-        rankings += [models.DivisionTeam(t["teamNumber"], t["totalPoints"]) for t in resp["districtRanks"]]
-        current_page += 1
-    
-    return rankings[:num_teams]
 
 if __name__ == "__main__":
     assert sys.version_info >= (3, 7)
