@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class DivisionTeam:
     team_number: int
     district_points: int
+    qualified: bool
 
 @dataclass
 class Division:

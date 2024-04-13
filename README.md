@@ -17,7 +17,7 @@ python generate_divisions.py --divisions-file test_data/divisions.txt --out-file
 ## Validate Generated Divisions
 
 ```bash
-python validate_divisions.py --out-file test_data/out.txt --season 2024 --district FIM --api-key "username:guid"
+python validate_divisions.py --out-file test_data/out.txt --season 2024 --district FIM --api-key "username:guid" --num-teams 160
 ```
 
 ## File Formats

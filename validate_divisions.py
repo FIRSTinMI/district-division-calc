@@ -10,11 +10,13 @@ import util
 CHECK_MARK = "✅"
 X_MARK = "❌"
 
+
 def __within_tolerance(val_list: list[float], tolerance: float):
     return max(val_list) - min(val_list) <= tolerance
 
+
 def validate_divisions(division_output: list[models.Division]) -> bool:
-    '''Checks that divisions conform with the tolerances set in the FRC game manual'''
+    """Checks that divisions conform with the tolerances set in the FRC game manual"""
     if not __within_tolerance([d.strength() for d in division_output], 2):
         return False
     if not __within_tolerance([d.snr() for d in division_output], 2.5):
@@ -23,11 +25,13 @@ def validate_divisions(division_output: list[models.Division]) -> bool:
         return False
     return True
 
+
 def main(
     out_file: Path = typer.Option(..., exists=True, file_okay=True, dir_okay=False, resolve_path=True, readable=True),
     api_key: str = typer.Option(..., help="Formatted as 'username:token'"),
     season: int = typer.Option(...),
     district: str = typer.Option(..., help="FRC District Code"),
+    num_teams: int = typer.Option(..., help="The total number of teams to attend the championship")
 ):
     typer.echo("NOTE: this tool assumes that all constraints from accommodations have been fulfilled")
 
@@ -41,11 +45,17 @@ def main(
             name = lines[0]
             team_mapping[name] = [int(line) for line in lines[1:]]
 
-    rankings = util.get_rankings(season, district, sum([len(v) for v in team_mapping.values()]), api_key)
+    rankings = util.get_rankings(season, district, api_key)
     team_rankings_map = {team.team_number: team for team in rankings}
 
+    team_count = sum(len(v) for v in team_mapping.values())
+
+    if team_count != num_teams:
+        typer.echo(typer.style(f"{X_MARK} Total number of teams does not match: {team_count} != {num_teams}", fg="red"))
+        raise typer.Exit(code=1)
+
     divisions = [models.Division(k, [team_rankings_map[t] for t in v]) for (k, v) in team_mapping.items()]
-    
+
     # Check that the math works out
     is_valid = validate_divisions(divisions)
     if is_valid:

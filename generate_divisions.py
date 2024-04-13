@@ -8,6 +8,7 @@ import models
 import validate_divisions
 import util
 
+
 def main(
         api_key: str = typer.Option(..., help="Formatted as 'username:token'"),
         season: int = typer.Option(...),
@@ -70,10 +71,27 @@ def main(
     quartile_size = num_teams // 4
     division_quartile_size = quartile_size // len(divisions)
 
-    rankings = util.get_rankings(season, district, num_teams, api_key)
+    rankings = util.get_rankings(season, district, api_key)
+
+    qualified_teams = [team for team in rankings if team.qualified]
+
+    if len(qualified_teams) != num_teams:
+        typer.echo(f"Expected {num_teams} teams to attend the championship, got {len(qualified_teams)}")
+        raise typer.Exit(code=1)
+
+    # get the keys of the accomodations dictionary
+    accommodated_teams = list(accommodations.keys())
+    # if accommodated teams are not in qualified teams, raise an error
+    for team in accommodated_teams:
+        if team not in [qualified_team.team_number for qualified_team in qualified_teams]:
+            typer.echo(f"Team {team} is not qualified to attend the championship")
+            raise typer.Exit(code=1)
+
+    # Let's ensure this is sorted, despite what the API returns
+    qualified_teams = sorted(qualified_teams, key=lambda team: team.district_points, reverse=True)
 
     # Divide into quartiles and shuffle them
-    quartiles = [rankings[i * quartile_size:(i + 1) * quartile_size] for i in range(4)]
+    quartiles = [qualified_teams[i * quartile_size:(i + 1) * quartile_size] for i in range(4)]
 
     while True:
         breaks_rule = False
@@ -108,6 +126,7 @@ def main(
             for team in sorted([t.team_number for t in division.teams]):
                 file.write(f"{team}\n")
             file.write(f"\n")
+
 
 if __name__ == "__main__":
     assert sys.version_info >= (3, 7)
